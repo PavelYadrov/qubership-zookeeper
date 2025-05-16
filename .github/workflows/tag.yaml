@@ -12,6 +12,11 @@ on:
         description: "Path do dockerfile"
         required: true
         default: ''
+      context:
+        type: string
+        description: "Docker build context"
+        required: false
+        default: .
       tag_name:
         type: string
         description: "Tag name"
@@ -28,6 +33,7 @@ jobs:
         component:
           - name: ${{ inputs.package_name }}
             file: ${{ inputs.docker_file_path }}
+            context: ${{ inputs.context }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
