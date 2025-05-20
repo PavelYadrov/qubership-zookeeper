@@ -1,0 +1,6 @@
+apiVersion: qubership.org/v1
+kind: ZooKeeperService
+metadata:
+  name: zookeeperservice-sample
+spec:
+  # Add fields here

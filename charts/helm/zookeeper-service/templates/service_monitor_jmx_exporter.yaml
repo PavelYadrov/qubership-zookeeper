@@ -1,0 +1,25 @@
+{{- if eq (include "monitoring.install" .) "true" }}
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: {{ template "zookeeper.name" . }}-service-monitor-jmx-exporter
+  labels:
+    {{- include "zookeeper.defaultLabels" . | nindent 4 }}
+    app.kubernetes.io/name: {{ template "zookeeper.name" . }}-service-monitor-jmx-exporter
+    app.kubernetes.io/component: monitoring
+spec:
+  endpoints:
+    - interval: 60s
+      port: prometheus-http
+      scheme: http
+      {{- if and (eq (include "vault.enabled" .) "false") (include "zookeeper.clientUsername" .) (include "zookeeper.clientPassword" .) }}
+      {{- end }}
+  jobLabel: k8s-app
+  namespaceSelector:
+    matchNames:
+      - {{ .Release.Namespace }}
+  selector:
+    matchLabels:
+      component: zookeeper
+      clusterName: {{ template "zookeeper.name" . }}
+{{- end }}

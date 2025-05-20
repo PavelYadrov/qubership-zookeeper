@@ -1,0 +1,11 @@
+version: '3'
+services:
+  operator-sdk:
+    build:
+      dockerfile: Dockerfile
+    stdin_open: true
+    tty: true
+    volumes:
+      - ../../zookeeper-service-operator:/zookeeper-service-operator
+      - ../../docs:/docs
+    working_dir: /zookeeper-service-operator

@@ -1,0 +1,23 @@
+{{- if eq (include "monitoring.install" .) "true" }}
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: {{ template "zookeeper.name" . }}-service-monitor
+  labels:
+    {{- include "zookeeper.defaultLabels" . | nindent 4 }}
+    app.kubernetes.io/name: {{ template "zookeeper.name" . }}-service-monitor
+    app.kubernetes.io/component: monitoring
+spec:
+  endpoints:
+    - interval: 60s
+      port: prometheus-cli
+      scheme: http
+  jobLabel: k8s-app
+  namespaceSelector:
+    matchNames:
+      - {{ .Release.Namespace }}
+  selector:
+    matchLabels:
+      component: zookeeper-monitoring
+      name: {{ template "zookeeper.name" . }}-monitoring
+{{- end }}

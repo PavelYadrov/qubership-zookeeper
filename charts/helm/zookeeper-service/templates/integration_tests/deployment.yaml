@@ -1,0 +1,180 @@
+{{- if .Values.integrationTests.install }}
+kind: Deployment
+apiVersion: apps/v1
+metadata:
+  name: {{ .Values.integrationTests.service.name }}
+  labels:
+    {{- include "zookeeper.defaultLabels" . | nindent 4 }}
+    name: {{ .Values.integrationTests.service.name }}
+    app.kubernetes.io/name: {{ .Values.integrationTests.service.name }}
+    app.kubernetes.io/instance: {{ cat .Values.integrationTests.service.name .Values.DELIMITER .Release.Namespace | nospace | trunc 63 }}
+    app.kubernetes.io/technology: python
+spec:
+  selector:
+    matchLabels:
+      name: {{ .Values.integrationTests.service.name }}
+  strategy:
+    type: Recreate
+  replicas: 1
+  template:
+    metadata:
+      labels:
+      {{- with .Values.global.customLabels }}
+        {{- toYaml . | nindent 8 -}}
+      {{- end }}
+      {{- with .Values.integrationTests.customLabels }}
+        {{- toYaml . | nindent 8 -}}
+      {{- end }}
+        name: {{ .Values.integrationTests.service.name }}
+        app.kubernetes.io/name: {{ .Values.integrationTests.service.name }}
+    spec:
+      serviceAccountName: {{ .Values.integrationTests.service.name }}
+      {{- if .Values.integrationTests.affinity }}
+      affinity:
+        {{ .Values.integrationTests.affinity | toJson }}
+      {{- end }}
+      containers:
+        - name: {{ .Values.integrationTests.service.name }}
+          image: {{ template "zookeeper-integration-tests.image" . }}
+          ports:
+            - containerPort: 8080
+              protocol: TCP
+          env:
+            - name: TAGS
+              value: {{ .Values.integrationTests.tags }}
+            {{- if .Values.deployDescriptor }}
+            - name: MONITORED_IMAGES
+              value: {{ include "zookeeper-service.monitoredImages" . }}
+            {{- end }}
+            - name: DR_SIDE
+              value: {{ default "" }}
+            - name: OS_URL
+              value: {{ .Values.integrationTests.url }}
+            - name: OS_PROJECT
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+            - name: ZOOKEEPER_IS_MANAGED_BY_OPERATOR
+              value: {{ .Values.integrationTests.zookeeperIsManagedByOperator | quote }}
+            - name: ZOOKEEPER_OS_PROJECT
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+            - name: ZOOKEEPER_HOST
+              value: {{ .Values.integrationTests.zookeeperHost }}
+            - name: ZOOKEEPER_PORT
+              value: {{ .Values.integrationTests.zookeeperPort | quote }}
+            - name: ZOOKEEPER_ENABLE_TLS
+              value: {{ include "zookeeper-service.enableSsl" . | quote }}
+            - name: ZOOKEEPER_VOLUME_SIZE
+              value: {{ .Values.integrationTests.zookeeperVolumeSize | default 2 | quote }}
+            - name: ZOOKEEPER_ADMIN_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: {{ template "zookeeper.name" . }}-secret
+                  key: admin-username
+            - name: ZOOKEEPER_ADMIN_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ template "zookeeper.name" . }}-secret
+                  key: admin-password
+            - name: ZOOKEEPER_CLIENT_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: {{ template "zookeeper.name" . }}-secret
+                  key: client-username
+            - name: ZOOKEEPER_CLIENT_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ template "zookeeper.name" . }}-secret
+                  key: client-password
+            {{- if .Values.backupDaemon.install }}
+            - name: PV_TYPE
+              value: {{ .Values.integrationTests.pvType }}
+            - name: ZOOKEEPER_BACKUP_DAEMON_PROTOCOL
+              value:  {{ template "backupDaemon.Protocol" . }}
+            - name: ZOOKEEPER_BACKUP_DAEMON_HOST
+              value: {{ template "zookeeper.name" . }}-backup-daemon
+            - name: ZOOKEEPER_BACKUP_DAEMON_PORT
+            {{- if (eq (include "backupDaemon.enableSsl" .) "true") }}
+              value: "8443"
+            {{ else }}
+              value: "8080"
+            {{- end }}
+            - name: ZOOKEEPER_BACKUP_DAEMON_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: {{ template "zookeeper.name" . }}-backup-daemon-secret
+                  key: username
+            - name: ZOOKEEPER_BACKUP_DAEMON_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ template "zookeeper.name" . }}-backup-daemon-secret
+                  key: password
+            {{- end }}
+            - name: PROMETHEUS_URL
+              value: {{ .Values.integrationTests.prometheusUrl }}
+            - name: PROMETHEUS_USER
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.integrationTests.service.name }}-secret
+                  key: prometheus-user
+            - name: PROMETHEUS_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.integrationTests.service.name }}-secret
+                  key: prometheus-password
+            - name: RANDOM_RUN_TRIGGER
+              value: {{ randAlphaNum 10 | quote }}
+          resources:
+            requests:
+              memory: {{ default "256Mi" .Values.integrationTests.resources.requests.memory }}
+              cpu: {{ default "200m" .Values.integrationTests.resources.requests.cpu }}
+            limits:
+              memory: {{ default "256Mi" .Values.integrationTests.resources.limits.memory }}
+              cpu: {{ default "400m" .Values.integrationTests.resources.limits.cpu }}
+          volumeMounts:
+            - name: output
+              mountPath: /opt/robot/output
+          {{- if and (eq (include "zookeeper-service.enableSsl" .) "true") (include "zookeeper-service.sslSecretName" .) }}
+            - name: ssl-certs
+              mountPath: /tls
+          {{- end }}
+          {{- if and (eq (include "backupDaemon.enableSsl" .) "true") (include "backupDaemon.sslSecretName" .) }}
+            - name: backup-ssl-certs
+              mountPath: /backupTLS
+          {{- end }}
+          terminationMessagePath: /dev/termination-log
+          imagePullPolicy: Always
+          securityContext:
+            {{- include "zookeeper-service.globalContainerSecurityContext" . | nindent 12 }}
+          readinessProbe:
+            exec:
+              command:
+                - sh
+                - -c
+                - 'cat /opt/robot/output/result.txt | grep -q "RESULT: TESTS PASSED"'
+            initialDelaySeconds: 20
+            timeoutSeconds: 5
+            periodSeconds: 20
+            successThreshold: 1
+            failureThreshold: 5
+      volumes:
+        - name: output
+          emptyDir: {}
+      {{- if and (eq (include "zookeeper-service.enableSsl" .) "true") (include "zookeeper-service.sslSecretName" .) }}
+        - name: ssl-certs
+          secret:
+            secretName: {{ template "zookeeper-service.sslSecretName" . }}
+      {{- end }}
+      {{- if and (eq (include "backupDaemon.enableSsl" .) "true") (include "backupDaemon.sslSecretName" .) }}
+        - name: backup-ssl-certs
+          secret:
+            secretName: {{ template "backupDaemon.sslSecretName" . }}
+      {{- end }}
+      securityContext:
+        {{- include "zookeeper-service.globalPodSecurityContext" . | nindent 8 }}
+        {{- with .Values.integrationTests.securityContext }}
+        {{- toYaml . | nindent 8 -}}
+        {{- end }}
+{{- end }}

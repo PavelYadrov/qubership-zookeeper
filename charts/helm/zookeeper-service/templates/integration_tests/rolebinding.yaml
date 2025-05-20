@@ -1,0 +1,15 @@
+{{- if .Values.integrationTests.install }}
+kind: RoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  labels:
+    {{- include "zookeeper.defaultLabels" . | nindent 4 }}
+  name: {{ .Values.integrationTests.service.name }}
+subjects:
+- kind: ServiceAccount
+  name: {{ .Values.integrationTests.service.name }}
+roleRef:
+  kind: Role
+  name: {{ .Values.integrationTests.service.name }}
+  apiGroup: rbac.authorization.k8s.io
+{{- end }}

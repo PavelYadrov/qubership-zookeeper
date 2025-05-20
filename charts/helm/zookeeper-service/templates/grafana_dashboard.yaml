@@ -1,0 +1,13 @@
+{{- if (and (eq (include "monitoring.install" .) "true") .Values.monitoring.installGrafanaDashboard) }}
+apiVersion: integreatly.org/v1alpha1
+kind: GrafanaDashboard
+metadata:
+  name: {{ template "zookeeper.name" . }}-grafana-dashboard
+  labels:
+    {{- include "zookeeper.defaultLabels" . | nindent 4 }}
+    app: grafana
+spec:
+  name: zookeeper-dashboard.json
+  json: >
+{{ .Files.Get "monitoring/zookeeper-dashboard.json" | indent 4 }}
+{{- end }}

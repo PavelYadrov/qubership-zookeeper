@@ -1,0 +1,52 @@
+version: '2'
+services:
+  zookeeper:
+    image: zookeeper:3.9.2
+    ports:
+    - 2181:2181
+    environment:
+    - ADMIN_USERNAME=zadmin
+    - ADMIN_PASSWORD=zadmin
+    - CLIENT_USERNAME=zclient
+    - CLIENT_PASSWORD=zclient
+  zookeeper-backup-daemon:
+    image: zookeeper-backup-daemon:latest
+    ports:
+      - 8080:8080
+    links:
+      - zookeeper
+    environment:
+      - ZOOKEEPER_HOST=zookeeper
+      - ZOOKEEPER_PORT=2181
+      - BACKUP_SCHEDULE=0 * * * *
+      - EVICTION_POLICY=3min/delete
+      - IPV6=false
+      - ZOOKEEPER_BACKUP_DAEMON_DEBUG=DEBUG
+      - LOG_LEVEL=DEBUG
+      - BACKUP_DAEMON_API_CREDENTIALS_USERNAME=admin
+      - BACKUP_DAEMON_API_CREDENTIALS_PASSWORD=admin
+      - ZOOKEEPER_ADMIN_USERNAME=zadmin
+      - ZOOKEEPER_ADMIN_PASSWORD=zadmin
+  zookeeper-integration-tests:
+    image: zookeeper-integration-tests
+    ports:
+    - 8090:8080
+    links:
+    - zookeeper
+    volumes:
+    - ./../integration-tests/robot/tests:/opt/robot/tests
+    - ./output:/opt/robot/output
+    environment:
+    - ZOOKEEPER_OS_PROJECT=
+    - ZOOKEEPER_HOST=zookeeper
+    - ZOOKEEPER_PORT=2181
+    - ZOOKEEPER_ADMIN_USERNAME=zadmin
+    - ZOOKEEPER_ADMIN_PASSWORD=zadmin
+    - ZOOKEEPER_CLIENT_USERNAME=zclient
+    - ZOOKEEPER_CLIENT_PASSWORD=zclient
+    - ZOOKEEPER_BACKUP_DAEMON_HOST=zookeeper-backup-daemon
+    - ZOOKEEPER_BACKUP_DAEMON_PORT=8080
+    - ZOOKEEPER_BACKUP_DAEMON_USERNAME=admin
+    - ZOOKEEPER_BACKUP_DAEMON_PASSWORD=admin
+    - TAGS=zookeeper_crud
+    command: ["run-ttyd"]

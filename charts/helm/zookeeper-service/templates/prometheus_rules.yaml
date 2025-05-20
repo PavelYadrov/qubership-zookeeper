@@ -1,0 +1,68 @@
+{{- if (and (eq (include "monitoring.install" .) "true") .Values.monitoring.installGrafanaDashboard) }}
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  creationTimestamp: null
+  labels:
+    {{- include "zookeeper.defaultLabels" . | nindent 4 }}
+    app.kubernetes.io/component: monitoring
+    prometheus: Zookeeper-rules
+    role: alert-rules
+  name: prometheus-zookeeper-service-rules
+spec:
+  groups:
+    - name: {{ .Release.Namespace }}-{{ .Release.Name }}
+      rules:
+        - alert: ZooKeeper_Is_Degraded_Alarm
+          annotations:
+            description: 'ZooKeeper is Degraded.'
+            summary: Some of ZooKeeper Service pods are down
+          expr: zookeeper_status_code{host=~"^.*",project_name="{{ .Release.Namespace }}"} == 5
+          for: 3m
+          labels:
+            severity: high
+            namespace: {{ .Release.Namespace }}
+            service: {{ .Release.Name }}
+        - alert: ZooKeeper_Is_Down_Alarm
+          annotations:
+            description: 'ZooKeeper is Down.'
+            summary: All of ZooKeeper Service pods are down
+          expr: zookeeper_status_code{host=~"^.*",project_name="{{ .Release.Namespace }}"} == 10
+          for: 3m
+          labels:
+            severity: disaster
+            namespace: {{ .Release.Namespace }}
+            service: {{ .Release.Name }}
+        - alert: ZooKeeper_CPU_Load_Alarm
+          annotations:
+            description: 'ZooKeeper CPU load is higher than 95 percents'
+            summary: Some of ZooKeeper Service pod loads CPU higher then 95 percents
+          expr: max(rate(container_cpu_usage_seconds_total{namespace="{{ .Release.Namespace }}", pod=~".*zookeeper-[0-9].*"}[1m])) / max(kube_pod_container_resource_limits_cpu_cores{exported_namespace="{{ .Release.Namespace }}", exported_pod=~".*zookeeper-[0-9].*"}) > 0.95
+          for: 3m
+          labels:
+            severity: high
+            namespace: {{ .Release.Namespace }}
+            service: {{ .Release.Name }}
+        - alert: ZooKeeper_Memory_Usage_Alarm
+          annotations:
+            description: 'ZooKeeper memory usage is higher than 95 percents'
+            summary: Some of ZooKeeper Service pod uses memory higher then 95 percents
+          expr: max(container_memory_working_set_bytes{namespace="{{ .Release.Namespace }}",container!~"POD|",pod=~".*zookeeper-[0-9].*"}) / max(kube_pod_container_resource_limits_memory_bytes{exported_namespace="{{ .Release.Namespace }}",exported_pod=~".*zookeeper-[0-9].*"}) >0.95
+          for: 3m
+          labels:
+            severity: high
+            namespace: {{ .Release.Namespace }}
+            service: {{ .Release.Name }}
+        {{- if .Values.backupDaemon.install }}
+        - alert: ZooKeeper_Last_Backup_Has_Failed_Alarm
+          annotations:
+            description: 'ZooKeeper Last Backup Has Failed'
+            summary: ZooKeeper Last Backup Has Failed
+          expr: zookeeper_backup_metric_last_backup_status{host=~"^.*",project_name="{{ .Release.Namespace }}"} == 4
+          for: 3m
+          labels:
+            severity: warning
+            namespace: {{ .Release.Namespace }}
+            service: {{ .Release.Name }}
+        {{- end }}
+{{- end }}

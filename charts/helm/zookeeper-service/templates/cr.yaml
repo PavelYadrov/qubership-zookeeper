@@ -1,0 +1,265 @@
+apiVersion: qubership.org/v1
+kind: ZooKeeperService
+metadata:
+  name: {{ template "zookeeper.name" . }}
+  labels:
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/processed-by-operator: {{ template "zookeeper.name" . }}-operator
+    {{- include "zookeeper.defaultLabels" . | nindent 4 }}
+spec:
+  global:
+    waitForPodsReady: {{ .Values.global.waitForPodsReady }}
+    podReadinessTimeout: {{ .Values.global.podReadinessTimeout | default 300}}
+  {{- with .Values.global.customLabels }}
+    customLabels:
+      {{- toYaml . | nindent 6 -}}
+  {{- end }}
+    defaultLabels:
+      {{- include "zookeeper.defaultLabels" . | nindent 6 }}
+      app.kubernetes.io/managed-by: operator
+      app.kubernetes.io/managed-by-operator: {{ template "zookeeper.name" . }}-operator
+      app.kubernetes.io/technology: java-others
+    zooKeeperSsl:
+      enabled: {{ template "zookeeper-service.enableSsl" . }}
+      secretName: "{{ template "zookeeper-service.sslSecretName" . }}"
+  zooKeeper:
+    dockerImage: {{ template "zookeeper.image" . }}
+  {{- with .Values.zooKeeper.customLabels }}
+    customLabels:
+      {{- toYaml . | nindent 6 -}}
+  {{- end }}
+  {{- if .Values.zooKeeper.affinity }}
+    affinity:
+      {{ .Values.zooKeeper.affinity | toJson }}
+  {{- end }}
+  {{- if .Values.zooKeeper.tolerations }}
+    tolerations:
+      {{ .Values.zooKeeper.tolerations | toJson }}
+  {{- end }}
+  {{- if .Values.zooKeeper.priorityClassName }}
+    priorityClassName: {{ .Values.zooKeeper.priorityClassName }}
+  {{- end }}
+    replicas: {{ include "zookeeper.replicas" . }}
+    storage:
+      size: {{ default "2Gi" .Values.zooKeeper.storage.size }}
+  {{- if (include "zookeeper.storageClassName" .) }}
+      className:
+    {{- range (include "zookeeper.storageClassName" . | fromYamlArray ) }}
+        - {{ . }}
+    {{- end }}
+  {{- end }}
+  {{- if .Values.zooKeeper.storage.volumes }}
+      volumes:
+    {{- range .Values.zooKeeper.storage.volumes }}
+        - {{ . }}
+    {{- end }}
+  {{- end }}
+  {{- if .Values.zooKeeper.storage.nodes }}
+      nodes:
+    {{- range .Values.zooKeeper.storage.nodes }}
+        - {{ . }}
+    {{- end }}
+  {{- end }}
+  {{- if .Values.zooKeeper.storage.labels }}
+      labels:
+    {{- range .Values.zooKeeper.storage.labels }}
+        - {{ . }}
+    {{- end }}
+  {{- end }}
+  {{- if .Values.zooKeeper.snapshotStorage }}
+    snapshotStorage:
+  {{- if .Values.zooKeeper.snapshotStorage.persistentVolumeType }}
+      persistentVolumeType: {{ .Values.zooKeeper.snapshotStorage.persistentVolumeType }}
+  {{- end }}
+  {{- if .Values.zooKeeper.snapshotStorage.persistentVolumeName }}
+      persistentVolumeName: {{ .Values.zooKeeper.snapshotStorage.persistentVolumeName }}
+  {{- end }}
+  {{- if .Values.zooKeeper.snapshotStorage.persistentVolumeClaimName }}
+      persistentVolumeClaimName: {{ .Values.zooKeeper.snapshotStorage.persistentVolumeClaimName }}
+  {{- end }}
+      volumeSize: {{ default "1Gi" .Values.zooKeeper.snapshotStorage.volumeSize }}
+  {{- if (or .Values.zooKeeper.snapshotStorage.storageClass (eq (.Values.zooKeeper.snapshotStorage.storageClass | toString) "")) }}
+      storageClass: {{ .Values.zooKeeper.snapshotStorage.storageClass | quote }}
+  {{- end }}
+  {{- end }}
+    heapSize: {{ default 256 .Values.zooKeeper.heapSize }}
+    jolokiaPort: {{ default 9087 .Values.zooKeeper.jolokiaPort }}
+    resources:
+      requests:
+        cpu: {{ default "50m" .Values.zooKeeper.resources.requests.cpu }}
+        memory: {{ default "512Mi" .Values.zooKeeper.resources.requests.memory }}
+      limits:
+        cpu: {{ default "300m" .Values.zooKeeper.resources.limits.cpu }}
+        memory: {{ default "512Mi" .Values.zooKeeper.resources.limits.memory }}
+    secretName: {{ template "zookeeper.name" . }}-secret
+    quorumAuthEnabled: {{ default true .Values.zooKeeper.quorumAuthEnabled }}
+  {{- if and .Values.global.tls.enabled .Values.zooKeeper.tls.enabled }}
+    ssl:
+    {{- if .Values.zooKeeper.tls.cipherSuites }}
+      cipherSuites:
+      {{- range .Values.zooKeeper.tls.cipherSuites }}
+        - {{ . }}
+      {{- end }}
+    {{- else if .Values.global.tls.cipherSuites}}
+      cipherSuites:
+      {{- range .Values.global.tls.cipherSuites }}
+        - {{ . }}
+      {{- end }}
+    {{- end }}
+      enableTwoWaySsl: {{ .Values.zooKeeper.tls.mTLS }}
+      allowNonencryptedAccess: {{ .Values.global.tls.allowNonencryptedAccess }}
+  {{- end }}
+    securityContext:
+      {{- include "zookeeper-service.globalPodSecurityContext" . | nindent 6 }}
+      {{- with .Values.zooKeeper.securityContext }}
+      {{- toYaml . | nindent 6 -}}
+      {{- end }}
+      {{- if and (ne (.Values.INFRA_ZOOKEEPER_FS_GROUP | toString) "<nil>") .Values.global.cloudIntegrationEnabled }}
+      fsGroup: {{ .Values.INFRA_ZOOKEEPER_FS_GROUP }}
+      {{- end }}
+    diagnostics:
+      mode: {{ default "disable" .Values.zooKeeper.diagnostics.mode | quote }}
+      agentService: {{ default "nc-diagnostic-agent" .Values.zooKeeper.diagnostics.agentService | quote }}
+    auditEnabled: {{ .Values.zooKeeper.auditEnabled | default false }}
+  {{- if .Values.zooKeeper.environmentVariables }}
+    environmentVariables:
+    {{- range .Values.zooKeeper.environmentVariables }}
+      - {{ . }}
+    {{- end }}
+  {{- end }}
+    rollingUpdate: {{ .Values.zooKeeper.rollingUpdate | default false }}
+  {{- if (eq (include "monitoring.install" .) "true") }}
+  monitoring:
+    dockerImage: {{ template "zookeeper-monitoring.image" . }}
+  {{- if .Values.monitoring.affinity }}
+    affinity:
+      {{ .Values.monitoring.affinity | toJson }}
+  {{- end }}
+  {{- if .Values.monitoring.tolerations }}
+    tolerations:
+      {{ .Values.monitoring.tolerations | toJson }}
+  {{- end }}
+  {{- if .Values.monitoring.priorityClassName }}
+    priorityClassName: {{ .Values.monitoring.priorityClassName }}
+  {{- end }}
+    resources:
+      requests:
+        cpu: {{ default "25m" .Values.monitoring.resources.requests.cpu }}
+        memory: {{ default "128Mi" .Values.monitoring.resources.requests.memory }}
+      limits:
+        cpu: {{ default "200m" .Values.monitoring.resources.limits.cpu }}
+        memory: {{ default "256Mi" .Values.monitoring.resources.limits.memory }}
+    monitoringType: "{{ .Values.monitoring.monitoringType }}"
+    zooKeeperHost: "{{ template "monitoring.zookeeperHost" . }}"
+    needToCleanInfluxDb: false
+  {{- if .Values.backupDaemon.install }}
+    zooKeeperBackupDaemonHost: {{ template "zookeeper.name" . }}-backup-daemon
+  {{- end }}
+    secretName: {{ template "zookeeper.name" . }}-monitoring-secret
+    securityContext:
+      {{- include "zookeeper-service.globalPodSecurityContext" . | nindent 6 }}
+      {{- with .Values.monitoring.securityContext }}
+      {{- toYaml . | nindent 6 -}}
+      {{- end }}
+  {{- with .Values.monitoring.customLabels }}
+    customLabels:
+      {{- toYaml . | nindent 6 -}}
+  {{- end }}
+  {{- end }}
+  {{- if .Values.backupDaemon.install }}
+  backupDaemon:
+    dockerImage: {{ template "zookeeper-backup-daemon.image" . }}
+  {{- if .Values.backupDaemon.affinity }}
+    affinity:
+      {{ .Values.backupDaemon.affinity | toJson }}
+  {{- end }}
+  {{- if .Values.backupDaemon.tolerations }}
+    tolerations:
+      {{ .Values.backupDaemon.tolerations | toJson }}
+  {{- end }}
+  {{- if .Values.backupDaemon.priorityClassName }}
+    priorityClassName: {{ .Values.backupDaemon.priorityClassName }}
+  {{- end }}
+    backupDaemonSsl:
+      enabled: {{ template "backupDaemon.enableSsl" . }}
+      secretName: "{{ template "backupDaemon.sslSecretName" . }}"
+    backupStorage:
+  {{- if .Values.backupDaemon.backupStorage.persistentVolumeType }}
+      persistentVolumeType: {{ .Values.backupDaemon.backupStorage.persistentVolumeType }}
+  {{- end }}
+  {{- if .Values.backupDaemon.backupStorage.persistentVolumeName }}
+      persistentVolumeName: {{ .Values.backupDaemon.backupStorage.persistentVolumeName }}
+  {{- end }}
+  {{- if .Values.backupDaemon.backupStorage.persistentVolumeClaimName }}
+      persistentVolumeClaimName: {{ .Values.backupDaemon.backupStorage.persistentVolumeClaimName }}
+  {{- end }}
+  {{- if .Values.backupDaemon.backupStorage.nodeName }}
+      nodeName: {{ .Values.backupDaemon.backupStorage.nodeName }}
+  {{- end }}
+      volumeSize: {{ default "1Gi" .Values.backupDaemon.backupStorage.volumeSize }}
+  {{- if .Values.backupDaemon.backupStorage.persistentVolumeLabel }}
+      persistentVolumeLabel: {{ .Values.backupDaemon.backupStorage.persistentVolumeLabel }}
+  {{- end }}
+  {{- if (or .Values.backupDaemon.backupStorage.storageClass (eq (.Values.backupDaemon.backupStorage.storageClass | toString) "")) }}
+      storageClass: {{ .Values.backupDaemon.backupStorage.storageClass | quote }}
+  {{- end }}
+  {{- if .Values.backupDaemon.s3.enabled }}
+    s3:
+      enabled: {{ .Values.backupDaemon.s3.enabled }}
+      url: "{{ .Values.backupDaemon.s3.url }}"
+      bucket: "{{ .Values.backupDaemon.s3.bucket }}"
+      secretName: {{ template "zookeeper.name" . }}-s3-secret
+      sslVerify: {{ .Values.backupDaemon.s3.sslVerify }}
+      sslSecretName: "{{ template "backupDaemon.s3.tlsSecretName" . }}"
+      sslCert: {{ .Values.backupDaemon.s3.sslCert | quote }}
+  {{- end }}
+    resources:
+      requests:
+        cpu: {{ default "25m" .Values.backupDaemon.resources.requests.cpu }}
+        memory: {{ default "512Mi" .Values.backupDaemon.resources.requests.memory }}
+      limits:
+        cpu: {{ default "300m" .Values.backupDaemon.resources.limits.cpu }}
+        memory: {{ default "512Mi" .Values.backupDaemon.resources.limits.memory }}
+  {{- if .Values.backupDaemon.backupSchedule }}
+    backupSchedule: {{ .Values.backupDaemon.backupSchedule }}
+  {{- end }}
+  {{- if .Values.backupDaemon.evictionPolicy }}
+    evictionPolicy: {{ .Values.backupDaemon.evictionPolicy }}
+  {{- end }}
+    ipv6: {{ default false .Values.backupDaemon.ipv6 }}
+    zooKeeperHost: {{ default "zookeeper" .Values.backupDaemon.zooKeeperHost }}
+    zooKeeperPort: {{ default 2181 .Values.backupDaemon.zooKeeperPort }}
+    secretName: {{ template "zookeeper.name" . }}-backup-daemon-secret
+    securityContext:
+      {{- include "zookeeper-service.globalPodSecurityContext" . | nindent 6 }}
+      {{- with .Values.backupDaemon.securityContext }}
+      {{- toYaml . | nindent 6 -}}
+      {{- end }}
+      {{- if and (ne (.Values.INFRA_ZOOKEEPER_FS_GROUP | toString) "<nil>") .Values.global.cloudIntegrationEnabled }}
+      fsGroup: {{- .Values.INFRA_ZOOKEEPER_FS_GROUP }}
+      {{- end }}
+  {{- with .Values.backupDaemon.customLabels }}
+    customLabels:
+      {{- toYaml . | nindent 6 -}}
+  {{- end }}
+  {{- end }}
+  {{- if eq (include "vault.enabled" .) "true" }}
+  vaultSecretManagement:
+    enabled: true
+    dockerImage: {{ template "vaultEnv.image" . }}
+    path:  {{ .Values.vaultSecretManagement.path | default "secret" }}
+    role:  {{ .Values.vaultSecretManagement.role | default "kubernetes-operator-role" }}
+    method:  {{ .Values.vaultSecretManagement.method | default "kubernetes" }}
+    url:  {{ .Values.vaultSecretManagement.url }}
+    passwordGenerationMechanism: {{ .Values.vaultSecretManagement.passwordGenerationMechanism | default "operator" }}
+    writePolicies: {{ .Values.vaultSecretManagement.writePolicies | default true}}
+  {{- end }}
+  {{- if .Values.integrationTests.install }}
+  integrationTests:
+    serviceName: {{ .Values.integrationTests.service.name | default "zookeeper-integration-tests-runner" }}
+    waitForResult: {{ .Values.integrationTests.waitForResult }}
+    timeout: {{ .Values.integrationTests.timeout | default 1800 }}
+    {{- if .Values.integrationTests.waitForResult }}
+    randomRunTrigger: {{ randAlphaNum 10 | quote }}
+    {{- end }}
+  {{- end }}

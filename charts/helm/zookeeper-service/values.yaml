@@ -1,0 +1,379 @@
+# Default values for zookeeper-service.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+global:
+  name: zookeeper
+  waitForPodsReady: true
+  podReadinessTimeout: 300
+  tls:
+    enabled: false
+    cipherSuites: []
+    allowNonencryptedAccess: false
+    generateCerts:
+      enabled: true
+      certProvider: cert-manager
+      durationDays: 365
+      clusterIssuerName: ""
+  secrets:
+    zooKeeper:
+      adminUsername: ""
+      adminPassword: ""
+      clientUsername: ""
+      clientPassword: ""
+      additionalUsers: ""
+    backupDaemon:
+      username: ""
+      password: ""
+    integrationTests:
+      prometheus:
+        user: ""
+        password: ""
+  customLabels: {}
+  securityContext: {}
+
+operator:
+  dockerImage: ghcr.io/netcracker/qubership-zookeeper-operator:main
+#  tolerations:
+#    - key: "key1"
+#      operator: "Equal"
+#      value: "value1"
+#      effect: "NoExecute"
+#      tolerationSeconds: 3600
+#  affinity: {
+#    "podAntiAffinity": {
+#      "requiredDuringSchedulingIgnoredDuringExecution": [
+#        {
+#          "labelSelector": {
+#            "matchExpressions": [
+#              {
+#                "key": "component",
+#                "operator": "In",
+#                "values": [
+#                    "zookeeper-service-operator"
+#                ]
+#              }
+#            ]
+#          },
+#          "topologyKey": "kubernetes.io/hostname"
+#        }
+#      ]
+#    }
+#  }
+  ## Name of the priority class to be used by zookeeper operator pods, priority class needs to be created beforehand
+  ## Ref: https://kubernetes.io/docs/concepts/configuration/pod-priority-preemption/
+  ##
+  priorityClassName: ""
+  customLabels: {}
+  securityContext: {}
+  resources:
+    limits:
+      cpu: 100m
+      memory: 256Mi
+    requests:
+      cpu: 50m
+      memory: 128Mi
+
+## Values for ZooKeeper deployment
+zooKeeper:
+  dockerImage: "ghcr.io/netcracker/docker-zookeeper:main"
+  affinity: {}
+#  affinity: {
+#    "podAntiAffinity": {
+#      "requiredDuringSchedulingIgnoredDuringExecution": [
+#      {
+#        "labelSelector": {
+#          "matchExpressions": [
+#          {
+#            "key": "component",
+#            "operator": "In",
+#            "values": [
+#              "zookeeper"
+#            ]
+#          }
+#          ]
+#        },
+#        "topologyKey": "kubernetes.io/hostname"
+#      }
+#      ]
+#    }
+#  }
+# tolerations:
+#  - key: "key1"
+#    operator: "Equal"
+#    value: "value1"
+#    effect: "NoExecute"
+#    tolerationSeconds: 3600
+  replicas: 3
+  priorityClassName: ""
+  disruptionBudget:
+    enabled: false
+    minAvailable: 2
+  storage:
+#    volumes:
+#      - zk-pv-1
+#      - zk-pv-2
+#      - zk-pv-3
+#    labels:
+#      - key1=value1
+#      - key2=value2
+#      - key3=value3
+#    className:
+#      - standard
+#    nodes:
+#      - node-1
+#      - node-2
+#      - node-3
+    size: 2Gi
+#  snapshotStorage:
+#    persistentVolumeType: predefined
+#    persistentVolumeName: pv-zk-snapshots
+#    persistentVolumeClaimName: pvc-zookeeper-snapshots
+#    volumeSize: 1Gi
+#    storageClass: standard
+  heapSize: 256
+  jolokiaPort: 9087
+  resources:
+    requests:
+      cpu: 50m
+      memory: 512Mi
+    limits:
+      cpu: 300m
+      memory: 512Mi
+#  quorumAuthEnabled: true
+  tls:
+    enabled: true
+    certificates:
+      crt: ""
+      key: ""
+      ca: ""
+    secretName: ""
+    cipherSuites: []
+    mTLS: false
+    # This includes "Subject Alternative Name" field to TLS certificate which restricts the list of DNS names and IP addresses
+    subjectAlternativeName:
+      additionalDnsNames: []
+      additionalIpAddresses: []
+#  securityContext: {
+#    "fsGroup": 1000,
+#    "runAsUser": 1000
+#  }
+#  environmentVariables:
+#    - CONF_ZOOKEEPER_propertyName=propertyValue
+  auditEnabled: false
+  rollingUpdate: false
+  diagnostics:
+    mode: "disable"
+    agentService: nc-diagnostic-agent
+  customLabels: {}
+
+## Values for ZooKeeper Monitoring deployment
+monitoring:
+  install: true
+  dockerImage: "ghcr.io/netcracker/zookeeper-monitoring:main"
+#  affinity: {
+#    "podAffinity": {
+#      "preferredDuringSchedulingIgnoredDuringExecution": [
+#      {
+#        "podAffinityTerm": {
+#          "labelSelector": {
+#            "matchExpressions": [
+#            {
+#              "key": "component",
+#              "operator": "In",
+#              "values": [
+#                "zookeeper"
+#              ]
+#            }
+#            ]
+#          },
+#          "topologyKey": "kubernetes.io/hostname"
+#        },
+#        "weight": 100
+#      }
+#      ]
+#    }
+#  }
+# tolerations:
+#  - key: "key2"
+#    operator: "Equal"
+#    value: "value2"
+#    effect: "NoExecute"
+#    tolerationSeconds: 3600
+
+  ## Name of the priority class to be used by zookeeper monitoring pod, priority class needs to be created beforehand
+  ## Ref: https://kubernetes.io/docs/concepts/configuration/pod-priority-preemption/
+  ##
+  priorityClassName: ""
+
+  resources:
+    requests:
+      cpu: 25m
+      memory: 128Mi
+    limits:
+      cpu: 200m
+      memory: 256Mi
+  monitoringType: "prometheus"
+  installGrafanaDashboard: true
+#  zooKeeperBackupDaemonHost: zookeeper-backup-daemon
+#  securityContext: {
+#    "runAsUser": 1000
+#  }
+  customLabels: {}
+
+## Values for ZooKeeper Backup Daemon deployment
+backupDaemon:
+  install: false
+  tls:
+    enabled: true
+    certificates:
+      crt: ""
+      key: ""
+      ca: ""
+    secretName: ""
+    cipherSuites: []
+    subjectAlternativeName:
+      additionalDnsNames: []
+      additionalIpAddresses: []
+  dockerImage: "ghcr.io/netcracker/zookeeper-backup-daemon:main"
+#  affinity: {
+#    "podAffinity": {
+#      "preferredDuringSchedulingIgnoredDuringExecution": [
+#      {
+#        "podAffinityTerm": {
+#          "labelSelector": {
+#            "matchExpressions": [
+#            {
+#              "key": "component",
+#              "operator": "In",
+#              "values": [
+#                "zookeeper"
+#              ]
+#            }
+#            ]
+#          },
+#          "topologyKey": "kubernetes.io/hostname"
+#        },
+#        "weight": 100
+#      }
+#      ]
+#    }
+#  }
+# tolerations:
+#  - key: "key3"
+#    operator: "Equal"
+#    value: "value3"
+#    effect: "NoExecute"
+#    tolerationSeconds: 3600
+
+  ## Name of the priority class to be used by zookeeper backup daemon, priority class needs to be created beforehand
+  ## Ref: https://kubernetes.io/docs/concepts/configuration/pod-priority-preemption/
+  ##
+  priorityClassName: ""
+
+  backupStorage:
+#    persistentVolumeType: standalone
+#    persistentVolumeName: pv-zk-snapshots
+#    persistentVolumeClaimName: pvc-zookeeper-snapshots
+#    storageClass: standard
+#    persistentVolumeLabel: "key=value"
+#    nodeName: "node-1"
+    volumeSize: 1Gi
+  s3:
+    enabled: false
+    url: ""
+    sslVerify: true
+    sslSecretName: ""
+    sslCert: ""
+    bucket: ""
+    keyId: ""
+    keySecret: ""
+  resources:
+    requests:
+      cpu: 25m
+      memory: 512Mi
+    limits:
+      cpu: 300m
+      memory: 512Mi
+#  backupSchedule: "0 * * * *"
+#  evictionPolicy: "0/1d,7d/delete"
+  ipv6: false
+  zooKeeperHost: zookeeper
+  zooKeeperPort: 2181
+#  securityContext: {
+#    "fsGroup": 1000,
+#    "runAsUser": 1000
+#  }
+  customLabels: {}
+
+## Values for Vault Secret Management
+vaultSecretManagement:
+  enabled: false
+#  dockerImage: banzaicloud/vault-env:1.19.0
+#  url: http://vault-service.example:8200
+#  method: kubernetes
+#  role: kubernetes-operator-role
+#  path: secret
+#  writePolicies: true
+#  passwordGenerationMechanism: operator
+#  refreshCredentials: false
+
+# integration tests are not performed by default
+integrationTests:
+  install: false
+  service:
+    name: zookeeper-integration-tests-runner
+  waitForResult: true
+  timeout: 420
+  affinity: {
+    "podAffinity": {
+      "preferredDuringSchedulingIgnoredDuringExecution": [
+        {
+          "podAffinityTerm": {
+            "labelSelector": {
+              "matchExpressions": [
+                {
+                  "key": "component",
+                  "operator": "In",
+                  "values": [
+                    "zookeeper"
+                  ]
+                }
+              ]
+            },
+            "topologyKey": "kubernetes.io/hostname"
+          },
+          "weight": 100
+        }
+      ]
+    }
+  }
+  image: "ghcr.io/netcracker/qubership-zookeeper-integration-tests:main"
+  tags: "zookeeper_crud"
+  # Please override "url" parameter with "6443" port for Kubernetes environment and "8443" for Openshift environment
+  url: "https://kube.com:6443"
+  zookeeperIsManagedByOperator: true
+  zookeeperHost: "zookeeper"
+  zookeeperPort: 2181
+  zookeeperVolumeSize: 2
+  pvType: "nfs"
+  prometheusUrl: ""
+  resources:
+    requests:
+      memory: 256Mi
+      cpu: 200m
+    limits:
+      memory: 256Mi
+      cpu: 400m
+  customLabels: {}
+  securityContext: {}
+
+# Cloud Release Integration
+# The name of the Service exposed for the database.
+SERVICE_NAME: "zookeeper-service"
+# Microservice belonging to a group
+PART_OF: "zookeeper-service"
+# Delimiter for labels
+DELIMITER: "-"
+# Artifact descriptor version which is installed.
+ARTIFACT_DESCRIPTOR_VERSION: ""  # TO_BE_REPLACED

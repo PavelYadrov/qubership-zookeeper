@@ -1,0 +1,7 @@
+google-auth==2.10.0
+urllib3==2.0.7
+requests==2.31.0
+kubernetes==12.0.1
+openshift==0.12.1
+kazoo==2.9.0
+pure-sasl==0.5.1

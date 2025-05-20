@@ -1,0 +1,12 @@
+{{- $install := and .Values.global.tls.enabled .Values.global.tls.generateCerts.enabled (or .Values.zooKeeper.tls.enabled .Values.backupDaemon.tls.enabled) }}
+{{- if and $install (eq (include "services.certProvider" .) "cert-manager") (not (.Values.global.tls.generateCerts.clusterIssuerName)) }}
+apiVersion: cert-manager.io/v1
+kind: Issuer
+metadata:
+  labels:
+    {{- include "zookeeper.defaultLabels" . | nindent 4 }}
+  name: {{ template "zookeeper.name" . }}-tls-issuer
+  namespace: {{ .Release.Namespace }}
+spec:
+  selfSigned: {}
+{{- end }}

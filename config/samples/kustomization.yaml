@@ -1,0 +1,5 @@
+## Append samples you want in your CSV to this file as resources ##
+resources:
+- qubership.org_v1alpha1_zookeeperservice.yaml
+- qubership.org_v1_zookeeperservice.yaml
+#+kubebuilder:scaffold:manifestskustomizesamples

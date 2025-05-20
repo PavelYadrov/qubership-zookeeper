@@ -1,0 +1,71 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ template "zookeeper.name" . }}-service-operator
+  labels:
+    {{- include "zookeeper.defaultLabels" . | nindent 4 }}
+    name: {{ template "zookeeper.name" . }}-service-operator
+    app.kubernetes.io/name: {{ template "zookeeper.name" . }}-service-operator
+    app.kubernetes.io/instance: {{ cat (printf "%s-operator" .Values.global.name) .Values.DELIMITER .Release.Namespace | nospace | trunc 63 }}
+    app.kubernetes.io/technology: go
+    component: zookeeper-service-operator
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      name: {{ template "zookeeper.name" . }}-service-operator
+      component: zookeeper-service-operator
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      annotations:
+        kubectl.kubernetes.io/default-container: manager
+      labels:
+      {{- with .Values.global.customLabels }}
+        {{- toYaml . | nindent 8 -}}
+      {{- end }}
+      {{- with .Values.operator.customLabels }}
+        {{- toYaml . | nindent 8 -}}
+      {{- end }}
+        name: {{ template "zookeeper.name" . }}-service-operator
+        component: zookeeper-service-operator
+        app.kubernetes.io/name: {{ template "zookeeper.name" . }}-service-operator
+    spec:
+      serviceAccountName: {{ template "zookeeper.name" . }}-service-operator
+      containers:
+        - name: {{ template "zookeeper.name" . }}-service-operator
+          image: {{ template "zookeeper-service-operator.image" . }}
+          command:
+            - /manager
+          imagePullPolicy: Always
+          env:
+            - name: WATCH_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+          resources:
+            limits:
+              cpu: {{ default "100m" .Values.operator.resources.limits.cpu  }}
+              memory: {{ default "256Mi" .Values.operator.resources.limits.memory }}
+            requests:
+              cpu: {{ default "50m" .Values.operator.resources.requests.cpu }}
+              memory: {{ default "128Mi" .Values.operator.resources.requests.memory }}
+          securityContext:
+            {{- include "zookeeper-service.globalContainerSecurityContext" . | nindent 12 }}
+      {{- if .Values.operator.affinity }}
+      affinity:
+        {{ .Values.operator.affinity | toJson }}
+      {{- end }}
+      {{- if .Values.operator.tolerations }}
+      tolerations:
+        {{ .Values.operator.tolerations | toJson }}
+      {{- end }}
+      {{- if .Values.operator.priorityClassName }}
+      priorityClassName: {{ .Values.operator.priorityClassName }}
+      {{- end }}
+      securityContext:
+        {{- include "zookeeper-service.globalPodSecurityContext" . | nindent 8 }}
+        {{- with .Values.operator.securityContext }}
+        {{- toYaml . | nindent 8 -}}
+        {{- end }}
