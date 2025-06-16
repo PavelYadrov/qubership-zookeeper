@@ -1,0 +1,24 @@
+---
+
+name: Helm Charts Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      release:
+        description: 'Release version. SemVer.'
+        required: true
+        type: string
+permissions:
+  contents: write
+  packages: write
+
+jobs:
+  mvn-snapshot-deploy:
+    uses: netcracker/.github/workflow-templates/helm-charts-release.yaml
+    with:
+      release: ${{ inputs.release }}
+    secrets:
+      maven-token: ${{ secrets.GITHUB_TOKEN }}
+      gpg-passphrase: ${{ secrets.MAVEN_GPG_PASSPHRASE }}
+      gpg-private-key: ${{ secrets.MAVEN_GPG_PRIVATE_KEY }}
