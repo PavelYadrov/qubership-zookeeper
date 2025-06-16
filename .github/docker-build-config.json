@@ -1,0 +1,35 @@
+{
+  "components": [
+    {
+      "name": "qubership-zookeeper-integration-tests",
+      "file": "integration-tests/docker/Dockerfile",
+      "context": "integration-tests"
+    },
+    {
+      "name": "qubership-zookeeper-operator",
+      "file": "Dockerfile",
+      "context": "."
+    },
+    {
+      "name": "qubership-zookeeper-transfer",
+      "file": "docker-transfer/Dockerfile",
+      "context": ""
+    },
+    {
+      "name": "qubership-zookeeper-backup-daemon",
+      "file": "zookeeper-backup-daemon/docker/Dockerfile",
+      "context": "zookeeper-backup-daemon"
+    },
+    {
+      "name": "qubership-zookeeper-monitoring",
+      "file": "zookeeper-monitoring/docker/Dockerfile",
+      "context": "zookeeper-monitoring"
+    },
+    {
+      "name": "qubership-docker-zookeeper",
+      "file": "docker-zookeeper/docker/Dockerfile",
+      "context": "docker-zookeeper"
+    }
+  ],
+  "platforms": "linux/amd64,linux/arm64"
+}
