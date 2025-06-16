@@ -3,7 +3,7 @@ tag-template: 'v$RESOLVED_VERSION'
 
 
 categories:
-  - title: '💥 Breaking Changes'
+  - title: '💣 Breaking Changes'
     labels:
       - breaking-change
   - title: '💡 New Features'
@@ -22,8 +22,7 @@ categories:
     labels:
       - documentation
 
-change-template: "- (#$NUMBER) $TITLE by @$AUTHOR"
-
+change-template: '- $TITLE (#$NUMBER) by @$AUTHOR'
 no-changes-template: 'No significant changes'
 
 template: |
