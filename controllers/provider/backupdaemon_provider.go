@@ -142,6 +142,10 @@ func (bdrp BackupDaemonResourceProvider) NewBackupDaemonDeployment() *appsv1.Dep
 				Name:  "S3_BUCKET",
 				Value: bdrp.spec.S3.Bucket,
 			},
+			{
+				Name:  "S3_SSL_VERIFY",
+				Value: strconv.FormatBool(bdrp.spec.S3.SslVerify),
+			},
 		}
 		envVars = append(envVars, s3Envs...)
 	}
