@@ -223,7 +223,7 @@ SIGWINCH
 "
 
 if [[ -n "$JOLOKIA_PORT" ]]; then
-  export SERVER_JVMFLAGS="${SERVER_JVMFLAGS} -javaagent:/opt/zookeeper/lib/jolokia-jvm-1.7.1.jar=port=$JOLOKIA_PORT,host=0.0.0.0"
+  export SERVER_JVMFLAGS="${SERVER_JVMFLAGS} -javaagent:/opt/zookeeper/lib/jolokia-jvm-1.7.2.jar=port=$JOLOKIA_PORT,host=0.0.0.0"
   if [[ -n "$CLIENT_USERNAME" && -n "${CLIENT_PASSWORD}" ]]; then
     export SERVER_JVMFLAGS="${SERVER_JVMFLAGS},user=${CLIENT_USERNAME},password=${CLIENT_PASSWORD}"; fi
   unset JOLOKIA_PORT
